@@ -1,0 +1,23 @@
+{
+  "name": "smart-contract-lottery",
+  "version": "1.0.0",
+  "description": "join the raffle to win a prize",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ejmorian/hardhat-smart-contract-lottery.git"
+  },
+  "author": "ejmorian",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ejmorian/hardhat-smart-contract-lottery/issues"
+  },
+  "homepage": "https://github.com/ejmorian/hardhat-smart-contract-lottery#readme",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.2",
+    "hardhat": "^2.13.1"
+  }
+}
