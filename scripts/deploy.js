@@ -1,8 +1,8 @@
 const { ethers } = require("hardhat");
 
 const main = async () => {
-  const signer = await ethers.getSigners();
-  const raffleFactory = await ethers.getContractFactory("Raffle", signer[0]);
+  const [userOne] = await ethers.getSigners();
+  const raffleFactory = await ethers.getContractFactory("Raffle", userOne);
   console.log("deploying contract..");
   const raffle = await raffleFactory.deploy(50);
   await raffle.deployed();

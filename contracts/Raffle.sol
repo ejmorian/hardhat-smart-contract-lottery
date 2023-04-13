@@ -5,6 +5,11 @@
 // use a chainlink oracle for randomness
 // automated execution (chainlink keepers)
 
+import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+import "@chainlink/contracts/src/v0.8/ConfirmedOwner.sol";
+//subscription ID:1184
+
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.8;
 
@@ -33,7 +38,9 @@ contract Raffle {
         emit RaffleEnter(msg.sender);
     }
 
-    function getEntranceFee() public view returns (uint256) {}
+    function getEntranceFee() public view returns (uint256) {
+        return i_entranceFee;
+    }
 
     function getParticipant(uint256 index) public view returns (address) {
         return s_participants[index];
