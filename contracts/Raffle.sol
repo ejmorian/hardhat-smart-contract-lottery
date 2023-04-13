@@ -5,8 +5,6 @@
 // use a chainlink oracle for randomness
 // automated execution (chainlink keepers)
 
-//subscription ID:1184
-
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.8;
 
@@ -19,15 +17,30 @@ contract Raffle is VRFConsumerBaseV2 {
     /* State Variables */
     uint256 private immutable i_entranceFee;
     address payable[] public s_participants;
+    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
+    bytes32 private immutable i_keyHash;
+    uint64 private immutable i_subId;
+    uint16 private constant c_requestConfirmation = 3;
+    uint32 private immutable i_callBackGaslimit;
+    uint32 private constant c_numWords = 1;
 
     /* Events */
     event RaffleEnter(address indexed participant);
+    event requestedRaffleWinner(uint256 indexed requestId);
 
+    //subscription ID:1184
     constructor(
-        address vrfCoordinatorV2,
-        uint256 entranceFee
+        address vrfCoordinatorV2, // 0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625
+        bytes32 _keyHash, // 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c
+        uint256 entranceFee,
+        uint64 subId,
+        uint32 callBackGaslimit
     ) VRFConsumerBaseV2(vrfCoordinatorV2) {
         i_entranceFee = entranceFee;
+        i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
+        i_keyHash = _keyHash;
+        i_subId = subId;
+        i_callBackGaslimit = callBackGaslimit;
     }
 
     function enterRaffle() external payable {
@@ -43,8 +56,17 @@ contract Raffle is VRFConsumerBaseV2 {
 
     function pickRandomWinner() external {
         //request the random number
+        uint256 requestId = i_vrfCoordinator.requestRandomWords(
+            i_keyHash,
+            i_subId,
+            c_requestConfirmation,
+            i_callBackGaslimit,
+            c_numWords
+        );
         //once we get it, do something with it
         // 2 transaction process
+
+        emit requestedRaffleWinner(requestId);
     }
 
     function fulfillRandomWords(
