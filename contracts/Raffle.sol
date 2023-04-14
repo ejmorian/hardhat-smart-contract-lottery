@@ -17,15 +17,20 @@ contract Raffle is VRFConsumerBaseV2 {
     /* State Variables */
     uint256 private immutable i_entranceFee;
     address payable[] public s_participants;
-    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
+    //request VRF parameters
     bytes32 private immutable i_keyHash;
     uint64 private immutable i_subId;
     uint16 private constant c_requestConfirmation = 3;
     uint32 private immutable i_callBackGaslimit;
     uint32 private constant c_numWords = 1;
+    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
+
+    uint256 public myRandomWord;
+    uint256 public myRequestId;
 
     /* Events */
     event RaffleEnter(address indexed participant);
+    event requestFulfilled(string indexed fulfilled);
     event requestedRaffleWinner(uint256 indexed requestId);
 
     //subscription ID:1184
@@ -72,7 +77,14 @@ contract Raffle is VRFConsumerBaseV2 {
     function fulfillRandomWords(
         uint256 requestId,
         uint256[] memory randomWords
-    ) internal override {}
+    ) internal override {
+        myRequestId = requestId;
+        myRandomWord = randomWords[0];
+
+        emit requestFulfilled(
+            "I recieved the callback along with the random numbers requested!"
+        );
+    }
 
     /** pure/view */
     function getEntranceFee() public view returns (uint256) {
