@@ -1,0 +1,53 @@
+const { ethers } = require("hardhat");
+
+const mocks = async () => {
+  const [deployer] = await ethers.getSigners();
+  const vrfCoordinatorV2Factory = await ethers.getContractFactory(
+    "VRFCoordinatorV2Mock",
+    deployer
+  );
+  const MockV3AggregatorFactory = await ethers.getContractFactory(
+    "MockV3Aggregator",
+    deployer
+  );
+  const LinkTokenFactory = await ethers.getContractFactory(
+    "LinkToken",
+    deployer
+  );
+  const VRFV2WrapperFactory = await ethers.getContractFactory(
+    "VRFV2Wrapper",
+    deployer
+  );
+
+  console.log("deploying Mocks...");
+
+  const vrfCoordinatorV2 = await vrfCoordinatorV2Factory.deploy("0", "0");
+  await vrfCoordinatorV2.deployed();
+
+  const MockV3Aggregator = await MockV3AggregatorFactory.deploy("8", "1");
+  await MockV3Aggregator.deployed();
+
+  const LinkToken = await LinkTokenFactory.deploy();
+  await LinkToken.deployed();
+
+  const VRFV2Wrapper = await VRFV2WrapperFactory.deploy(
+    LinkToken.address,
+    MockV3Aggregator.address,
+    vrfCoordinatorV2.address
+  );
+  await VRFV2Wrapper.deployed();
+
+  console.log("succesfull deployed...");
+
+  console.log(`vrfCoordinator: ${vrfCoordinatorV2.address}`);
+  console.log(`MockV3Aggregator: ${MockV3Aggregator.address}`);
+  console.log(`LinkToken: ${LinkToken.address}`);
+  console.log(`VRFV2Wrapper: ${VRFV2Wrapper.address}`);
+};
+
+mocks()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
