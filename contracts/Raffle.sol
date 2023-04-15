@@ -22,7 +22,15 @@ error Raffle__UpKeepNotNeeded(
     uint256 raffleState
 );
 
+/**
+ * @title A Sample Raffle Contract
+ * @author ejmorian
+ * @notice This contract is for creating a untamperable decentralise smart contracts
+ * @dev this implements chainlink VRFV2 and chainlink keepers
+ */
+
 contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
+    /**Type Declarations */
     enum RaffleState {
         OPEN,
         CALCULATING
@@ -32,15 +40,15 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
     uint256 private immutable i_entranceFee;
     address payable[] public s_participants;
     address private winner;
-    //request VRF parameters
+    /** VRF variables */
     bytes32 private immutable i_keyHash;
     uint64 private immutable i_subId;
     uint16 private constant c_requestConfirmation = 3;
     uint32 private immutable i_callBackGaslimit;
     uint32 private constant c_numWords = 1;
     VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
-    // lottery vars
-    uint256 private i_previousTimeStamp;
+    /**Raffle Variables */
+    uint256 private s_previousTimestamp;
     uint256 private constant c_interval = 120;
     RaffleState private s_raffleState;
 
@@ -49,7 +57,7 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
     event requestedRaffleWinner(uint256 indexed requestId);
     event WinnerPicked(address indexed recentWinner);
 
-    //subscription ID:1184
+    /**Functions */
     constructor(
         address vrfCoordinatorV2, // 0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625
         bytes32 _keyHash, // 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c
@@ -63,7 +71,7 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
         i_subId = subId;
         i_callBackGaslimit = callBackGaslimit;
         s_raffleState = RaffleState.OPEN;
-        i_previousTimeStamp = block.timestamp;
+        s_previousTimestamp = block.timestamp;
     }
 
     function enterRaffle() external payable {
@@ -112,7 +120,7 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
             revert Raffle__TransferFailed();
         }
         s_participants = new address payable[](0);
-        i_previousTimeStamp = block.timestamp;
+        s_previousTimestamp = block.timestamp;
         if (s_raffleState != RaffleState.OPEN) {
             s_raffleState = RaffleState.OPEN;
         }
@@ -129,7 +137,7 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
         returns (bool upkeepNeeded, bytes memory /*performData*/)
     {
         bool isOpen = s_raffleState == RaffleState.OPEN;
-        bool intervalPassed = (block.timestamp - i_previousTimeStamp) >
+        bool intervalPassed = (block.timestamp - s_previousTimestamp) >
             c_interval;
         bool hasPlayers = s_participants.length > 0;
         bool hasBalance = address(this).balance > 0;
@@ -148,8 +156,8 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
             );
         }
 
-        if ((block.timestamp - i_previousTimeStamp) > c_interval) {
-            i_previousTimeStamp = block.timestamp;
+        if ((block.timestamp - s_previousTimestamp) > c_interval) {
+            s_previousTimestamp = block.timestamp;
 
             pickRandomWinner();
         }
@@ -164,8 +172,20 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
         return s_participants[index];
     }
 
+    function getParticipantNumbers() public view returns (uint256) {
+        return s_participants.length;
+    }
+
     function getWinner() public view returns (address) {
         return winner;
+    }
+
+    function getRaffleState() public view returns (RaffleState) {
+        return s_raffleState;
+    }
+
+    function getPreviousTimestampt() public view returns (uint256) {
+        return s_previousTimestamp;
     }
 
     // function pickRandomWinner() external {}
