@@ -49,7 +49,7 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
     VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
     /**Raffle Variables */
     uint256 private s_previousTimestamp;
-    uint256 private constant c_interval = 120;
+    uint256 private immutable i_interval;
     RaffleState private s_raffleState;
 
     /* Events */
@@ -60,16 +60,18 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
     /**Functions */
     constructor(
         address vrfCoordinatorV2, // 0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625
-        bytes32 _keyHash, // 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c
+        bytes32 keyHash, // 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c
         uint256 entranceFee,
         uint64 subId,
-        uint32 callBackGaslimit
+        uint32 callBackGaslimit,
+        uint256 interval
     ) VRFConsumerBaseV2(vrfCoordinatorV2) {
         i_entranceFee = entranceFee;
         i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
-        i_keyHash = _keyHash;
+        i_keyHash = keyHash;
         i_subId = subId;
         i_callBackGaslimit = callBackGaslimit;
+        i_interval = interval;
         s_raffleState = RaffleState.OPEN;
         s_previousTimestamp = block.timestamp;
     }
@@ -138,7 +140,7 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
     {
         bool isOpen = s_raffleState == RaffleState.OPEN;
         bool intervalPassed = (block.timestamp - s_previousTimestamp) >
-            c_interval;
+            i_interval;
         bool hasPlayers = s_participants.length > 0;
         bool hasBalance = address(this).balance > 0;
 
@@ -156,7 +158,7 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
             );
         }
 
-        if ((block.timestamp - s_previousTimestamp) > c_interval) {
+        if ((block.timestamp - s_previousTimestamp) > i_interval) {
             s_previousTimestamp = block.timestamp;
 
             pickRandomWinner();
