@@ -1,0 +1,26 @@
+const { network, ethers } = require("hardhat");
+const { developmentChains } = require("../helper-hardhat-config");
+
+const baseFee = ethers.utils.parseEther("0.25");
+const gasPriceLink = 1e9;
+
+module.exports = async ({ getNamedAccounts, deployments }) => {
+  const { deployer } = await getNamedAccounts();
+  const { deploy, log } = deployments;
+
+  const args = [baseFee, gasPriceLink];
+
+  if (developmentChains.includes(network.name)) {
+    await deploy("VRFCoordinatorV2Mock", {
+      from: deployer,
+      args: args,
+      log: true,
+      waitConfirmations: 1,
+    });
+    console.log("Mocks Deployed...");
+  } else {
+    console.log("in a live network... mocks do not need to be deployed.");
+  }
+};
+
+module.exports.tags = ["all", "mocks"];
