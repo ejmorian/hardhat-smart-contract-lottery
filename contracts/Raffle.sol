@@ -12,11 +12,13 @@ import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 
 error enterRaffle__insufficientAmount();
+error Raffle__TransferFailed();
 
 contract Raffle is VRFConsumerBaseV2 {
     /* State Variables */
     uint256 private immutable i_entranceFee;
     address payable[] public s_participants;
+    address private winner;
     //request VRF parameters
     bytes32 private immutable i_keyHash;
     uint64 private immutable i_subId;
@@ -30,8 +32,8 @@ contract Raffle is VRFConsumerBaseV2 {
 
     /* Events */
     event RaffleEnter(address indexed participant);
-    event requestFulfilled(string indexed fulfilled);
     event requestedRaffleWinner(uint256 indexed requestId);
+    event WinnerPicked(address indexed recentWinner);
 
     //subscription ID:1184
     constructor(
@@ -75,15 +77,21 @@ contract Raffle is VRFConsumerBaseV2 {
     }
 
     function fulfillRandomWords(
-        uint256 requestId,
+        uint256 /*requestId*/,
         uint256[] memory randomWords
     ) internal override {
-        myRequestId = requestId;
-        myRandomWord = randomWords[0];
+        uint256 winnerIndex = randomWords[0] % s_participants.length;
+        winner = s_participants[winnerIndex];
 
-        emit requestFulfilled(
-            "I recieved the callback along with the random numbers requested!"
+        (bool success, ) = payable(winner).call{value: address(this).balance}(
+            ""
         );
+
+        if (!success) {
+            revert Raffle__TransferFailed();
+        }
+
+        emit WinnerPicked(winner);
     }
 
     /** pure/view */
@@ -93,6 +101,10 @@ contract Raffle is VRFConsumerBaseV2 {
 
     function getParticipant(uint256 index) public view returns (address) {
         return s_participants[index];
+    }
+
+    function getWinner() public view returns (address) {
+        return winner;
     }
 
     // function pickRandomWinner() external {}
