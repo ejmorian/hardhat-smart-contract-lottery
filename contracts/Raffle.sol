@@ -190,7 +190,7 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
         return s_participants.length;
     }
 
-    function gets_winner() public view returns (address) {
+    function getWinner() public view returns (address) {
         return s_winner;
     }
 
@@ -198,7 +198,7 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
         return s_raffleState;
     }
 
-    function getPreviousTimestampt() public view returns (uint256) {
+    function getPreviousTimestamp() public view returns (uint256) {
         return s_previousTimestamp;
     }
 

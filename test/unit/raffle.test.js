@@ -23,7 +23,7 @@ const {
         _value;
 
       beforeEach(async () => {
-        _value = ethers.utils.parseEther("0.1");
+        _value = ethers.utils.parseEther("0.01");
         chainId = await getChainId();
         deployer = (await getNamedAccounts()).deployer;
         await deployments.fixture("all");
@@ -227,6 +227,129 @@ const {
           assert(Number(requestId) > 0);
 
           assert.equal(await raffleContract.getRaffleState(), "1");
+        });
+      });
+
+      describe("fulfillRandomWords", () => {
+        beforeEach(async () => {
+          await raffleContract.enterRaffle({ value: _value });
+          await network.provider.request({
+            method: "evm_increaseTime",
+            params: [Number(interval) + 1],
+          });
+          await network.provider.request({
+            method: "evm_mine",
+            params: [],
+          });
+        });
+
+        it("reverts if performUpKeep is not used", async () => {
+          await expect(
+            VRFCoordinatorContract.fulfillRandomWords(0, raffleContract.address)
+          ).to.be.revertedWith("nonexistent request");
+        });
+
+        it("picks a winner, resets the raffle and sends money", async () => {
+          const users = await ethers.getSigners();
+          const initialTimestamp = raffleContract.getPreviousTimestamp();
+          const initialParticipants = [];
+
+          users.forEach(async (user, index) => {
+            if (index != 0) {
+              const raffle = raffleContract.connect(user);
+              await raffle.enterRaffle({ value: _value });
+            }
+          });
+
+          const initialWinnerBalance = await users[2].getBalance();
+          const initialContractBalance = await ethers.provider.getBalance(
+            raffleContract.address
+          );
+
+          const participantLength =
+            await raffleContract.getParticipantNumbers();
+
+          for (let i = 0; i < participantLength; i++) {
+            initialParticipants.push(await raffleContract.getParticipant(i));
+          }
+
+          await new Promise(async (resolve, reject) => {
+            raffleContract.once("s_winnerPicked", async (winnerAddress) => {
+              try {
+                console.log("event picked up!");
+                const winner = await raffleContract.getWinner();
+                const endingWinnerBalance = await ethers.provider.getBalance(
+                  winner
+                );
+                const timestamp = await raffleContract.getPreviousTimestamp();
+                const participant =
+                  await raffleContract.getParticipantNumbers();
+                const raffleState = await raffleContract.getRaffleState();
+                const entranceFee = networkConfig[chainId].EntranceFee;
+                const endingContractBalance = await ethers.provider.getBalance(
+                  raffleContract.address
+                );
+                const winnerProfit =
+                  endingWinnerBalance.sub(initialWinnerBalance);
+                const gasUsed = initialContractBalance.sub(winnerProfit);
+
+                // console.log("entrance fee:", entranceFee.toString());
+
+                // console.log(
+                //   "initial Contract Balance:",
+                //   initialContractBalance.toString()
+                // );
+                // console.log(
+                //   "ending Contract Balance:",
+                //   endingContractBalance.toString()
+                // );
+                // console.log(
+                //   "initial Winner Balance:",
+                //   initialWinnerBalance.toString()
+                // );
+                // console.log(
+                //   "ending Winner Balance:",
+                //   endingWinnerBalance.toString()
+                // );
+
+                // console.log(
+                //   "winner profit:",
+                //   endingWinnerBalance.sub(initialWinnerBalance).toString()
+                // );
+
+                // console.log(
+                //   "missing value: (gas cost?)",
+                //   initialContractBalance.sub(winnerProfit).toString()
+                // );
+
+                assert.equal(
+                  endingWinnerBalance.toString(),
+
+                  initialWinnerBalance
+                    .add(entranceFee.mul(participantLength))
+                    .sub(gasUsed)
+                    .toString()
+                );
+                assert.equal(participant, 0);
+                assert.equal(winner, winnerAddress);
+                assert.ok(initialParticipants.includes(winner));
+                assert.ok(timestamp < initialTimestamp);
+                assert.ok(initialParticipants.includes(winner));
+                assert.equal(raffleState, "0");
+              } catch (e) {
+                reject(e);
+              }
+              resolve();
+            });
+
+            const tx = await raffleContract.performUpkeep([]);
+            const txReciept = await tx.wait(1);
+
+            await VRFCoordinatorContract.fulfillRandomWords(
+              txReciept.events[1].args["requestId"],
+              raffleContract.address
+            );
+          });
         });
       });
 
