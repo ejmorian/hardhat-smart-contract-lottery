@@ -13,7 +13,7 @@ const {
 
 !developmentChains.includes(network.name)
   ? describe.skip
-  : describe("Raffle", async () => {
+  : describe("Raffle", () => {
       let deployer,
         raffleContract,
         chainId,
@@ -37,7 +37,7 @@ const {
         await VRFCoordinatorContract.addConsumer(subId, raffleContract.address);
       });
 
-      describe("constructor", async () => {
+      describe("constructor", () => {
         it("initialises an open state raffle", async () => {
           assert.equal((await raffleContract.getRaffleState()).toString(), "0");
         });
@@ -70,7 +70,7 @@ const {
         });
       });
 
-      describe("enterRaffle", async () => {
+      describe("enterRaffle", () => {
         it("revert transaction if insufficient value is sent", async () => {
           await expect(
             raffleContract.enterRaffle({ value: 0 })
@@ -114,7 +114,7 @@ const {
         });
       });
 
-      describe("checkUpkeep", async () => {
+      describe("checkUpkeep", () => {
         it("return false if people haven't sent eth", async () => {
           await network.provider.request({
             method: "evm_increaseTime",
@@ -185,7 +185,52 @@ const {
         });
       });
 
-      describe("setRaffleState", async () => {
+      describe("performUpkeep", () => {
+        it("reverts if upKeep conditions are not met", async () => {
+          await expect(
+            raffleContract.performUpkeep([])
+          ).to.be.revertedWithCustomError(
+            raffleContract,
+            "Raffle__UpKeepNotNeeded"
+          );
+        });
+
+        it("run only if upKeep conditions are met", async () => {
+          await raffleContract.enterRaffle({ value: _value });
+          await network.provider.request({
+            method: "evm_increaseTime",
+            params: [Number(interval) + 1],
+          });
+          await network.provider.request({
+            method: "evm_mine",
+            params: [],
+          });
+          await expect(raffleContract.performUpkeep([])).to.not.be.reverted;
+        });
+
+        it("updates the raffle state, emits an even, calls the vrf coordinator", async () => {
+          //upkeep is true
+          await raffleContract.enterRaffle({ value: _value });
+          await network.provider.request({
+            method: "evm_increaseTime",
+            params: [Number(interval) + 1],
+          });
+          await network.provider.request({
+            method: "evm_mine",
+            params: [],
+          });
+
+          const transactionResponse = await raffleContract.performUpkeep([]);
+          const transactionReceipt = await transactionResponse.wait(1);
+
+          const requestId = transactionReceipt.events[1].args["requestId"];
+          assert(Number(requestId) > 0);
+
+          assert.equal(await raffleContract.getRaffleState(), "1");
+        });
+      });
+
+      describe("setRaffleState", () => {
         it("Owner can control raffle state", async () => {
           await raffleContract.setRaffleState("1"); //Closed
           await expect(

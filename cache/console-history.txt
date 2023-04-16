@@ -1,0 +1,7 @@
+network.name
+contract
+contract.address
+const contract = await deployments.get("Raffle")
+await deployments.get("Raffle")
+await deployments.all()
+deployments.all()
