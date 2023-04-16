@@ -114,6 +114,77 @@ const {
         });
       });
 
+      describe("checkUpkeep", async () => {
+        it("return false if people haven't sent eth", async () => {
+          await network.provider.request({
+            method: "evm_increaseTime",
+            params: [Number(interval) + 1],
+          });
+          await network.provider.request({
+            method: "evm_mine",
+            params: [],
+          });
+          const { upkeepNeeded } = await raffleContract.callStatic.checkUpkeep(
+            []
+          );
+          assert(!upkeepNeeded);
+        });
+
+        it("return false if raffle is not open", async () => {
+          await network.provider.request({
+            method: "evm_increaseTime",
+            params: [Number(interval) + 1],
+          });
+          await network.provider.request({
+            method: "evm_mine",
+            params: [],
+          });
+          await raffleContract.enterRaffle({ value: _value });
+          await raffleContract.performUpkeep([]);
+          const { upkeepNeeded } = await raffleContract.callStatic.checkUpkeep(
+            []
+          );
+
+          const raffleState = await raffleContract.getRaffleState();
+          assert(raffleState.toString(), "1");
+          assert(!upkeepNeeded);
+        });
+
+        it("retuns false if enough time has passed", async () => {
+          await raffleContract.enterRaffle({ value: _value });
+          await network.provider.request({
+            method: "evm_increaseTime",
+            params: [Number(interval) - 2],
+          });
+          await network.provider.request({
+            method: "evm_mine",
+            params: [],
+          });
+
+          const { upkeepNeeded } = await raffleContract.callStatic.checkUpkeep(
+            []
+          );
+          assert.equal(upkeepNeeded, false);
+        });
+
+        it("retuns true if enough time has passed, has enough players, raffle is open, and smart contract has balance", async () => {
+          await raffleContract.enterRaffle({ value: _value });
+          await network.provider.request({
+            method: "evm_increaseTime",
+            params: [Number(interval) + 1],
+          });
+          await network.provider.request({
+            method: "evm_mine",
+            params: [],
+          });
+
+          const { upkeepNeeded } = await raffleContract.callStatic.checkUpkeep(
+            []
+          );
+          assert.equal(upkeepNeeded, true);
+        });
+      });
+
       describe("setRaffleState", async () => {
         it("Owner can control raffle state", async () => {
           await raffleContract.setRaffleState("1"); //Closed
