@@ -54,6 +54,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     log: true,
     waitConfirmations: 1,
   });
+  console.log("Raffle contract deployed...");
 
   if (!developmentChains.includes(network.name)) {
     console.log("verifying contract...");

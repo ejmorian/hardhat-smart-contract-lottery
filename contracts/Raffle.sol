@@ -21,6 +21,7 @@ error Raffle__UpKeepNotNeeded(
     uint256 participants,
     uint256 raffleState
 );
+error Raffle_UnAuthorised();
 
 /**
  * @title A Sample Raffle Contract
@@ -36,8 +37,15 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
         CALCULATING
     }
 
-    /* State Variables */
+    modifier OnlyOwner() {
+        if (msg.sender != s_owner) {
+            revert Raffle_UnAuthorised();
+        }
+        _;
+    }
 
+    /* State Variables */
+    address private immutable s_owner;
     address payable[] public s_participants;
     uint256 private s_previousTimestamp;
     RaffleState private s_raffleState;
@@ -75,6 +83,7 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
         i_interval = interval;
         s_raffleState = RaffleState.OPEN;
         s_previousTimestamp = block.timestamp;
+        s_owner = msg.sender;
     }
 
     function enterRaffle() external payable {
@@ -92,7 +101,7 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
         emit RaffleEnter(msg.sender);
     }
 
-    function pickRandoms_winner() internal {
+    function pickRandomWinner() internal {
         s_raffleState = RaffleState.CALCULATING;
         //request the random number
         uint256 requestId = i_vrfCoordinator.requestRandomWords(
@@ -159,11 +168,13 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
             );
         }
 
-        if ((block.timestamp - s_previousTimestamp) > i_interval) {
-            s_previousTimestamp = block.timestamp;
+        s_previousTimestamp = block.timestamp;
 
-            pickRandoms_winner();
-        }
+        pickRandomWinner();
+    }
+
+    function setRaffleState(RaffleState _state) public OnlyOwner {
+        s_raffleState = _state;
     }
 
     /** pure/view */
@@ -215,5 +226,5 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
         return i_callBackGaslimit;
     }
 
-    // function pickRandoms_winner() external {}
+    // function pickRandomWinner() external {}
 }

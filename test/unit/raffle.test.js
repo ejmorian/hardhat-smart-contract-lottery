@@ -14,9 +14,16 @@ const {
 !developmentChains.includes(network.name)
   ? describe.skip
   : describe("Raffle", async () => {
-      let deployer, raffleContract, chainId, VRFCoordinatorContract;
+      let deployer,
+        raffleContract,
+        chainId,
+        VRFCoordinatorContract,
+        interval,
+        subId,
+        _value;
 
       beforeEach(async () => {
+        _value = ethers.utils.parseEther("0.1");
         chainId = await getChainId();
         deployer = (await getNamedAccounts()).deployer;
         await deployments.fixture("all");
@@ -25,9 +32,16 @@ const {
           "VRFCoordinatorV2Mock",
           deployer
         );
+        interval = networkConfig[chainId].Interval;
+        subId = await raffleContract.getSubId();
+        await VRFCoordinatorContract.addConsumer(subId, raffleContract.address);
       });
 
-      describe("Constructor", async () => {
+      describe("constructor", async () => {
+        it("initialises an open state raffle", async () => {
+          assert.equal((await raffleContract.getRaffleState()).toString(), "0");
+        });
+
         it("constructor takes in the correct value", async () => {
           //expected args
           const vrfCoordinatorV2 = (
@@ -53,6 +67,59 @@ const {
           //   assert.equal(subId, SubId);
           assert.equal(callBackGasLimit, CallBackGasLimit);
           assert.equal(interval.toString(), Interval.toString());
+        });
+      });
+
+      describe("enterRaffle", async () => {
+        it("revert transaction if insufficient value is sent", async () => {
+          await expect(
+            raffleContract.enterRaffle({ value: 0 })
+          ).to.be.revertedWithCustomError(
+            raffleContract,
+            "enterRaffle__insufficientAmount"
+          );
+        });
+
+        it("adds the address in the participants list", async () => {
+          await raffleContract.enterRaffle({ value: _value });
+          const addressRecorded = await raffleContract.getParticipant(0);
+          assert.equal(addressRecorded, deployer);
+        });
+
+        it("emits an event with address of the participant", async () => {
+          const transactionResponse = await raffleContract.enterRaffle({
+            value: _value,
+          });
+          const transactionReceipt = await transactionResponse.wait(1);
+          const emitEventArgs =
+            transactionReceipt.events[0].args["participant"];
+          assert.equal(deployer, emitEventArgs);
+        });
+
+        it("entrance not allowed when raffle is in calculating winner state", async () => {
+          await raffleContract.enterRaffle({ value: _value });
+          await network.provider.request({
+            method: "evm_increaseTime",
+            params: [Number(interval) + 1],
+          });
+          await network.provider.request({
+            method: "evm_mine",
+            params: [],
+          });
+
+          await raffleContract.performUpkeep([]);
+          await expect(
+            raffleContract.enterRaffle({ value: _value })
+          ).to.be.revertedWithCustomError(raffleContract, "Raffle__NotOpened");
+        });
+      });
+
+      describe("setRaffleState", async () => {
+        it("Owner can control raffle state", async () => {
+          await raffleContract.setRaffleState("1"); //Closed
+          await expect(
+            raffleContract.enterRaffle({ value: _value })
+          ).to.be.revertedWithCustomError(raffleContract, "Raffle__NotOpened");
         });
       });
     });
