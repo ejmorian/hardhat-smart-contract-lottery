@@ -1,6 +1,7 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("@nomiclabs/hardhat-ethers");
 require("hardhat-deploy");
+require("hardhat-gas-reporter");
 
 const privateKey =
   "0xf8cd2a427b162332f0fe66323a10c61ad797b9bfe07495e6e8869b5e0dd05e88";
@@ -19,6 +20,10 @@ module.exports = {
     localhost: {
       url: "http://127.0.0.1:8545/",
       chainId: 31337,
+      gasPrice: 0,
+    },
+    hardhat: {
+      gasPrice: 14375000000,
     },
     sepolia: {
       url: "https://eth-sepolia.g.alchemy.com/v2/mM7jvgG7LNx9C4YZRHGf5z1vUAmFXT6n",
@@ -39,5 +44,8 @@ module.exports = {
   },
   mocha: {
     timeout: 200000,
+  },
+  gasReporter: {
+    enabled: false,
   },
 };

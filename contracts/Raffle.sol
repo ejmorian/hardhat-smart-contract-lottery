@@ -117,6 +117,16 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
         emit requestedRaffles_winner(requestId);
     }
 
+    function payWinner(address payable winner) internal {
+        (bool success, ) = payable(winner).call{value: address(this).balance}(
+            ""
+        );
+
+        if (!success) {
+            revert Raffle__TransferFailed();
+        }
+    }
+
     function fulfillRandomWords(
         uint256 /*requestId*/,
         uint256[] memory randomWords
@@ -124,13 +134,8 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
         uint256 s_winnerIndex = randomWords[0] % s_participants.length;
         s_winner = s_participants[s_winnerIndex];
 
-        (bool success, ) = payable(s_winner).call{value: address(this).balance}(
-            ""
-        );
+        payWinner(payable(s_winner));
 
-        if (!success) {
-            revert Raffle__TransferFailed();
-        }
         s_participants = new address payable[](0);
         s_previousTimestamp = block.timestamp;
         if (s_raffleState != RaffleState.OPEN) {

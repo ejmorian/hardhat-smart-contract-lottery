@@ -23,8 +23,8 @@ const {
         _value;
 
       beforeEach(async () => {
-        _value = ethers.utils.parseEther("0.01");
         chainId = await getChainId();
+        _value = await networkConfig[chainId]["EntranceFee"];
         deployer = (await getNamedAccounts()).deployer;
         await deployments.fixture("all");
         raffleContract = await ethers.getContract("Raffle", deployer);
@@ -67,6 +67,15 @@ const {
           //   assert.equal(subId, SubId);
           assert.equal(callBackGasLimit, CallBackGasLimit);
           assert.equal(interval.toString(), Interval.toString());
+        });
+      });
+
+      describe("setRaffleState", () => {
+        it("Owner can control raffle state", async () => {
+          await raffleContract.setRaffleState("1"); //Closed
+          await expect(
+            raffleContract.enterRaffle({ value: _value })
+          ).to.be.revertedWithCustomError(raffleContract, "Raffle__NotOpened");
         });
       });
 
@@ -261,11 +270,6 @@ const {
             }
           });
 
-          const initialWinnerBalance = await users[2].getBalance();
-          const initialContractBalance = await ethers.provider.getBalance(
-            raffleContract.address
-          );
-
           const participantLength =
             await raffleContract.getParticipantNumbers();
 
@@ -274,18 +278,24 @@ const {
           }
 
           await new Promise(async (resolve, reject) => {
+            const initialContractBalance = await ethers.provider.getBalance(
+              raffleContract.address
+            );
+            const initialWinnerBalance = await users[2].getBalance();
+
             raffleContract.once("s_winnerPicked", async (winnerAddress) => {
               try {
                 console.log("event picked up!");
+
                 const winner = await raffleContract.getWinner();
-                const endingWinnerBalance = await ethers.provider.getBalance(
-                  winner
-                );
                 const timestamp = await raffleContract.getPreviousTimestamp();
                 const participant =
                   await raffleContract.getParticipantNumbers();
                 const raffleState = await raffleContract.getRaffleState();
                 const entranceFee = networkConfig[chainId].EntranceFee;
+                const endingWinnerBalance = await ethers.provider.getBalance(
+                  winner
+                );
                 const endingContractBalance = await ethers.provider.getBalance(
                   raffleContract.address
                 );
@@ -293,16 +303,16 @@ const {
                   endingWinnerBalance.sub(initialWinnerBalance);
                 const gasUsed = initialContractBalance.sub(winnerProfit);
 
-                // console.log("entrance fee:", entranceFee.toString());
+                // // console.log("entrance fee:", entranceFee.toString());
 
-                // console.log(
-                //   "initial Contract Balance:",
-                //   initialContractBalance.toString()
-                // );
-                // console.log(
-                //   "ending Contract Balance:",
-                //   endingContractBalance.toString()
-                // );
+                // // console.log(
+                // //   "initial Contract Balance:",
+                // //   initialContractBalance.toString()
+                // // );
+                // // console.log(
+                // //   "ending Contract Balance:",
+                // //   endingContractBalance.toString()
+                // // );
                 // console.log(
                 //   "initial Winner Balance:",
                 //   initialWinnerBalance.toString()
@@ -312,22 +322,16 @@ const {
                 //   endingWinnerBalance.toString()
                 // );
 
-                // console.log(
-                //   "winner profit:",
-                //   endingWinnerBalance.sub(initialWinnerBalance).toString()
-                // );
-
-                // console.log(
-                //   "missing value: (gas cost?)",
-                //   initialContractBalance.sub(winnerProfit).toString()
-                // );
+                // // console.log(
+                // //   "winner profit:",
+                // //   endingWinnerBalance.sub(initialWinnerBalance).toString()
+                // // );
 
                 assert.equal(
                   endingWinnerBalance.toString(),
 
                   initialWinnerBalance
                     .add(entranceFee.mul(participantLength))
-                    .sub(gasUsed)
                     .toString()
                 );
                 assert.equal(participant, 0);
@@ -350,15 +354,6 @@ const {
               raffleContract.address
             );
           });
-        });
-      });
-
-      describe("setRaffleState", () => {
-        it("Owner can control raffle state", async () => {
-          await raffleContract.setRaffleState("1"); //Closed
-          await expect(
-            raffleContract.enterRaffle({ value: _value })
-          ).to.be.revertedWithCustomError(raffleContract, "Raffle__NotOpened");
         });
       });
     });
