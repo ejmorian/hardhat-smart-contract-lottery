@@ -7,6 +7,7 @@ const privateKey =
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
+  defaultNetwork: "localhost",
   solidity: {
     compilers: [
       { version: "0.8.18" },

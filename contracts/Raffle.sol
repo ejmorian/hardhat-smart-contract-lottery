@@ -1,7 +1,7 @@
 //Raffle
 // Enter the lottery (1Eth per entry)
-// Pick a random winner
-// Winner selection to be selected per week
+// Pick a random s_winner
+// s_winner selection to be selected per week
 // use a chainlink oracle for randomness
 // automated execution (chainlink keepers)
 
@@ -37,25 +37,26 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
     }
 
     /* State Variables */
-    uint256 private immutable i_entranceFee;
+
     address payable[] public s_participants;
-    address private winner;
-    /** VRF variables */
+    uint256 private s_previousTimestamp;
+    RaffleState private s_raffleState;
+    address private s_winner;
+
+    uint32 private immutable i_callBackGaslimit;
     bytes32 private immutable i_keyHash;
     uint64 private immutable i_subId;
-    uint16 private constant c_requestConfirmation = 3;
-    uint32 private immutable i_callBackGaslimit;
-    uint32 private constant c_numWords = 1;
+    uint256 private immutable i_entranceFee;
     VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
-    /**Raffle Variables */
-    uint256 private s_previousTimestamp;
     uint256 private immutable i_interval;
-    RaffleState private s_raffleState;
+
+    uint16 private constant c_requestConfirmation = 3;
+    uint32 private constant c_numWords = 1;
 
     /* Events */
     event RaffleEnter(address indexed participant);
-    event requestedRaffleWinner(uint256 indexed requestId);
-    event WinnerPicked(address indexed recentWinner);
+    event requestedRaffles_winner(uint256 indexed requestId);
+    event s_winnerPicked(address indexed recents_winner);
 
     /**Functions */
     constructor(
@@ -91,7 +92,7 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
         emit RaffleEnter(msg.sender);
     }
 
-    function pickRandomWinner() internal {
+    function pickRandoms_winner() internal {
         s_raffleState = RaffleState.CALCULATING;
         //request the random number
         uint256 requestId = i_vrfCoordinator.requestRandomWords(
@@ -104,17 +105,17 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
         //once we get it, do something with it
         // 2 transaction process
 
-        emit requestedRaffleWinner(requestId);
+        emit requestedRaffles_winner(requestId);
     }
 
     function fulfillRandomWords(
         uint256 /*requestId*/,
         uint256[] memory randomWords
     ) internal override {
-        uint256 winnerIndex = randomWords[0] % s_participants.length;
-        winner = s_participants[winnerIndex];
+        uint256 s_winnerIndex = randomWords[0] % s_participants.length;
+        s_winner = s_participants[s_winnerIndex];
 
-        (bool success, ) = payable(winner).call{value: address(this).balance}(
+        (bool success, ) = payable(s_winner).call{value: address(this).balance}(
             ""
         );
 
@@ -127,7 +128,7 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
             s_raffleState = RaffleState.OPEN;
         }
 
-        emit WinnerPicked(winner);
+        emit s_winnerPicked(s_winner);
     }
 
     function checkUpkeep(
@@ -161,7 +162,7 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
         if ((block.timestamp - s_previousTimestamp) > i_interval) {
             s_previousTimestamp = block.timestamp;
 
-            pickRandomWinner();
+            pickRandoms_winner();
         }
     }
 
@@ -178,8 +179,8 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
         return s_participants.length;
     }
 
-    function getWinner() public view returns (address) {
-        return winner;
+    function gets_winner() public view returns (address) {
+        return s_winner;
     }
 
     function getRaffleState() public view returns (RaffleState) {
@@ -190,5 +191,21 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
         return s_previousTimestamp;
     }
 
-    // function pickRandomWinner() external {}
+    function getInterval() public view returns (uint256) {
+        return i_interval;
+    }
+
+    function getKeyHash() public view returns (bytes32) {
+        return i_keyHash;
+    }
+
+    function getVrfCoordinator()
+        public
+        view
+        returns (VRFCoordinatorV2Interface)
+    {
+        return i_vrfCoordinator;
+    }
+
+    // function pickRandoms_winner() external {}
 }
