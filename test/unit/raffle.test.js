@@ -266,7 +266,8 @@ const {
           users.forEach(async (user, index) => {
             if (index != 0) {
               const raffle = raffleContract.connect(user);
-              await raffle.enterRaffle({ value: _value });
+              const tx = await raffle.enterRaffle({ value: _value });
+              await tx.wait(1);
             }
           });
 
