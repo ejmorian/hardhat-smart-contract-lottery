@@ -33,6 +33,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   } else {
     VRFCoordinatorV2Address = networkConfig[chainId]["VRFCoordinatorV2"];
     KeyHash = networkConfig[chainId]["KeyHash"];
+    SubId = networkConfig[chainId]["SubscriptionId"];
   }
 
   const EntranceFee = networkConfig[chainId]["EntranceFee"];
@@ -42,7 +43,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   const args = [
     VRFCoordinatorV2Address,
     KeyHash,
-    EntranceFee,
+    EntranceFee.toString(),
     SubId,
     CallBackGasLimit,
     Interval,
@@ -52,7 +53,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     from: deployer,
     args: args,
     log: true,
-    waitConfirmations: 1,
+    waitConfirmations: 6,
   });
   console.log("Raffle contract deployed...");
 

@@ -1,3 +1,10 @@
+await raffle.checkUpkeep([])
+await raffle.checkUpkeep()
+raffle.getLastTimeStamp()
+entrants.toString()
+const entrants = await raffle.getParticipantNumbers();
+await ethers.provider.getBalance(raffle.address)
+const raffle = await ethers.getContract("Raffle")
 network.name
 contract
 contract.address
