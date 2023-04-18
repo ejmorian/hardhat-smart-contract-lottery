@@ -7,10 +7,10 @@ const privateKey =
   "0xf8cd2a427b162332f0fe66323a10c61ad797b9bfe07495e6e8869b5e0dd05e88";
 
 const privateKey2 =
-  "e566a72e6bea90728706acca4ccd37a8c86c3fc1b7cf3eddd7f31384b5433d9e";
+  "8f80e98dd7152441e9ac3b882d61abbbdd1a85cd59d66bb3c76c0e5d9f27cfa4"; //0x23Bd2D8A40b1BC32025c1b05Cab9E13a5e85C8c4
 
 const privateKey3 =
-  "dd631cf758b3b0d72462b2cdcd4b4f1c5ead133e4b12c814f1ff2c13b127281a";
+  "0f0d2a9cd0795abbcab461674588f1378cda0c843b5611d57b362686f80ebb2d"; //0xcD75aA9aea4dbA7d93bb81d5C4511699dF1d8695
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {

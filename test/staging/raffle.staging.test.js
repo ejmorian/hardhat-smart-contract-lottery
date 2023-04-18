@@ -1,5 +1,5 @@
 const { expect, assert } = require("chai");
-const { network, getNamedAccounts, ethers, getChainId } = require("hardhat");
+const { ethers, network, getChainId } = require("hardhat");
 const {
   developmentChains,
   networkConfig,
@@ -7,105 +7,121 @@ const {
 
 developmentChains.includes(network.name)
   ? describe.skip
-  : describe("Sepolia Live network, staging test", () => {
-      let deployer, raffleContract, chainId, interval, entranceFee;
+  : describe("Live Sepolia Test Network", () => {
+      let raffleContract,
+        users,
+        userOneRaffle,
+        userTwoRaffle,
+        userThreeRaffle,
+        entraceFee;
 
-      //deploy contract
       beforeEach(async () => {
-        deployer = (await getNamedAccounts()).deployer;
-        raffleContract = await ethers.getContract("Raffle", deployer);
-        interval = await raffleContract.getInterval();
-        chainId = await getChainId();
+        raffleContract = await ethers.getContract("Raffle");
+        users = await ethers.getSigners();
 
-        entranceFee = await networkConfig[chainId].EntranceFee;
+        userOneRaffle = raffleContract.connect(users[0]);
+        userTwoRaffle = raffleContract.connect(users[1]);
+        userThreeRaffle = raffleContract.connect(users[2]);
+
+        entraceFee = networkConfig[await getChainId()]["EntranceFee"];
       });
 
-      //staging
-      describe("It works in a live network and connect with Chainlinkk VRF and upKeep", () => {
-        //Users Enter Raffle
-        let participants;
-
-        beforeEach(async () => {
-          console.log("Users entering the raffle...");
-          participants = await ethers.getSigners();
-
-          const [userOne, userTwo, userThree] = participants;
-
-          const userOneContract = await raffleContract.connect(userOne);
-          const tx1 = await userOneContract.enterRaffle({ value: entranceFee });
-          await tx1.wait(3);
-
-          const userTwoContract = await raffleContract.connect(userTwo);
-          const tx2 = await userTwoContract.enterRaffle({ value: entranceFee });
-          await tx2.wait(3);
-
-          const userThreeContract = await raffleContract.connect(userThree);
-          const tx3 = await userThreeContract.enterRaffle({
-            value: entranceFee,
+      it("winner is picked, recieves the correct amount", async () => {
+        //Enter Raffle
+        console.log("users entering the raffle");
+        try {
+          const tx1 = await userOneRaffle.enterRaffle({
+            value: entraceFee,
+            gasLimit: 500000,
           });
-          await tx3.wait(3);
+          console.log("userOne has entered");
 
-          //   participants.forEach(async (user) => {
-          //     const connectedContract = await raffleContract.connect(user);
-          //     const tx = await connectedContract.enterRaffle({
-          //       value: entranceFee,
-          //     });
-          //     await tx.wait(3);
-          //   });
-          console.log("Users succesfully entered!");
-        });
+          const tx2 = await userTwoRaffle.enterRaffle({
+            value: entraceFee,
+            gasLimit: 500000,
+          });
+          console.log("userTwo has entered");
 
-        describe("fulfillRandomWords", () => {
-          it("emits an event, picks a winner, and winner recieves the money", async () => {
-            const initialBalance = participants.map(async (user) => {
-              const userAddress = await user.address;
-              const balance = await ethers.provider.getBalance(userAddress);
-              const account = { [userAddress]: balance };
+          const tx3 = await userThreeRaffle.enterRaffle({
+            value: entraceFee,
+            gasLimit: 500000,
+          });
+          await tx3.wait();
 
-              return account;
-            });
-            const participantNumbers =
-              await raffleContract.getParticipantNumbers();
+          console.log("userThree has entered");
+        } catch (e) {
+          console.log("a transaction has been reverted...");
+          console.error(e);
+        }
 
-            // wait for the VRF Chainlink to respond...
-            console.log("participants: ", participantNumbers.toString());
-            console.log(await initialBalance);
-            const prizePool = await ethers.provider.getBalance(
-              raffleContract.address
-            );
-            await new Promise(async (resolve, rejected) => {
-              raffleContract.once("s_winnerPicked", async (winnerAddress) => {
-                try {
-                  console.log("Winner Picked!", winnerAddress);
+        const initialTimestamp = await raffleContract.getPreviousTimestamp();
 
-                  const winnerPicked = await raffleContract.getWinner();
-                  assert.equal(winnerAddress, winnerPicked);
+        const participants = await raffleContract.getParticipantNumbers();
+        console.log(`${participants.toString()} have entered the raffle.`);
 
-                  const winnerEndingBalance = await ethers.provider.getBalance(
-                    winnerAddress
-                  );
-                  let winnerInitialBalance;
-                  initialBalance.forEach(async (user) => {
-                    if (user.hasOwnProperty(winnerAddress)) {
-                      winnerInitialBalance = await user[winnerAddress];
-                      console.log(await winnerInitialBalance.toString());
-                    } else {
-                      console.log("something went wrong...");
-                    }
-                  });
+        const initialBalances = [
+          { [await users[0].address]: [await users[0].getBalance()] },
+          { [await users[1].address]: [await users[1].getBalance()] },
+          { [await users[2].address]: [await users[2].getBalance()] },
+        ];
+        console.log(initialBalances);
 
-                  const expectedEndingBalance = await winnerInitialBalance.add(
-                    prizePool
-                  );
+        //Wait for Chainlink VRF and Upkeep to perform the upkeep in order to pick a winner.
+        await new Promise(async (resolve, reject) => {
+          raffleContract.once("s_winnerPicked", async (winnerAddress) => {
+            try {
+              console.log(
+                "Event has been emmited, winner has been picked!",
+                winnerAddress
+              );
+              const contractWinner = await raffleContract.getWinner();
+              const winnerEndingBalance = await ethers.provider.getBalance(
+                winnerAddress
+              );
+              let winnerInitialBalance;
 
-                  assert.equal(winnerEndingBalance, expectedEndingBalance);
-
-                  resolve();
-                } catch (e) {
-                  rejected(e);
+              console.log("looking for winners initial balance");
+              initialBalances.forEach((account) => {
+                if (account.hasOwnProperty(winnerAddress)) {
+                  console.log("found it");
+                  winnerInitialBalance = account[winnerAddress];
+                  console.log(account);
+                } else {
+                  //   console.log(account);
+                  console.log("not this one...");
                 }
               });
-            });
+
+              //   console.log(
+              //     "winner initial balance:",
+              //     winnerInitialBalance.toString()
+              //   );
+              //   console.log(
+              //     "winner ending balance:",
+              //     winnerEndingBalance.toString()
+              //   );
+
+              const winnerProfit =
+                winnerEndingBalance.toString() -
+                winnerInitialBalance.toString();
+              const rafflePrizePool = entraceFee.mul(participants).toString();
+              //check if winner is picked
+              assert.equal(winnerAddress, contractWinner);
+
+              //check if winner recieved the right amount
+              assert.equal(winnerProfit, rafflePrizePool);
+
+              const endingTimestamp =
+                await raffleContract.getPreviousTimestamp();
+
+              // check if the winner is picked after the interval
+              assert.ok(initialTimestamp - endingTimestamp > "30"); //interval);
+
+              resolve();
+            } catch (e) {
+              console.error(e);
+              reject(e);
+            }
           });
         });
       });
