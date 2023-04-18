@@ -13,7 +13,8 @@ developmentChains.includes(network.name)
         userOneRaffle,
         userTwoRaffle,
         userThreeRaffle,
-        entraceFee;
+        entraceFee,
+        interval;
 
       beforeEach(async () => {
         raffleContract = await ethers.getContract("Raffle");
@@ -24,11 +25,15 @@ developmentChains.includes(network.name)
         userThreeRaffle = raffleContract.connect(users[2]);
 
         entraceFee = networkConfig[await getChainId()]["EntranceFee"];
+        interval = networkConfig[await getChainId()]["Interval"];
       });
 
       it("winner is picked, recieves the correct amount", async () => {
         //Enter Raffle
         console.log("users entering the raffle");
+        const lastTimestamp = await raffleContract.getPreviousTimestamp();
+        console.log("lastTimestamp:", lastTimestamp);
+        console.log("picking winner after. interval:", interval, "seconds");
         try {
           const tx1 = await userOneRaffle.enterRaffle({
             value: entraceFee,
@@ -54,8 +59,6 @@ developmentChains.includes(network.name)
           console.error(e);
         }
 
-        const initialTimestamp = await raffleContract.getPreviousTimestamp();
-
         const participants = await raffleContract.getParticipantNumbers();
         console.log(`${participants.toString()} have entered the raffle.`);
 
@@ -70,6 +73,13 @@ developmentChains.includes(network.name)
         await new Promise(async (resolve, reject) => {
           raffleContract.once("s_winnerPicked", async (winnerAddress) => {
             try {
+              const newTimestamp = await raffleContract.getPreviousTimestamp();
+              console.log("newTimestamp:", newTimestamp);
+              const executionTime =
+                newTimestamp.toString() - lastTimestamp.toString();
+              console.log(newTimestamp.toString() - lastTimestamp.toString());
+              assert.ok(executionTime > interval);
+
               console.log(
                 "Event has been emmited, winner has been picked!",
                 winnerAddress
@@ -105,17 +115,12 @@ developmentChains.includes(network.name)
                 winnerEndingBalance.toString() -
                 winnerInitialBalance.toString();
               const rafflePrizePool = entraceFee.mul(participants).toString();
+
               //check if winner is picked
               assert.equal(winnerAddress, contractWinner);
 
               //check if winner recieved the right amount
               assert.equal(winnerProfit, rafflePrizePool);
-
-              const endingTimestamp =
-                await raffleContract.getPreviousTimestamp();
-
-              // check if the winner is picked after the interval
-              assert.ok(initialTimestamp - endingTimestamp > "30"); //interval);
 
               resolve();
             } catch (e) {
