@@ -17,6 +17,7 @@ developmentChains.includes(network.name)
         interval;
 
       beforeEach(async () => {
+        //get the user accounts and the raffle contract
         raffleContract = await ethers.getContract("Raffle");
         users = await ethers.getSigners();
 
@@ -29,7 +30,7 @@ developmentChains.includes(network.name)
       });
 
       it("winner is picked, recieves the correct amount", async () => {
-        //Enter Raffle
+        //Users Enter the Raffle
         console.log("users entering the raffle");
         const lastTimestamp = await raffleContract.getPreviousTimestamp();
         console.log("lastTimestamp:", lastTimestamp);
@@ -58,10 +59,13 @@ developmentChains.includes(network.name)
           console.log("a transaction has been reverted...");
           console.error(e);
         }
+        //User finished enterting the raffle
 
+        //get the participants number, how many users have joined the raffle succesfuly
         const participants = await raffleContract.getParticipantNumbers();
         console.log(`${participants.toString()} have entered the raffle.`);
 
+        //get mapping of user address and their current balances
         const initialBalances = [
           { [await users[0].address]: [await users[0].getBalance()] },
           { [await users[1].address]: [await users[1].getBalance()] },
@@ -73,23 +77,27 @@ developmentChains.includes(network.name)
         await new Promise(async (resolve, reject) => {
           raffleContract.once("s_winnerPicked", async (winnerAddress) => {
             try {
-              const newTimestamp = await raffleContract.getPreviousTimestamp();
-              console.log("newTimestamp:", newTimestamp);
-              const executionTime =
-                newTimestamp.toString() - lastTimestamp.toString();
-              console.log(newTimestamp.toString() - lastTimestamp.toString());
-              assert.ok(executionTime > interval);
-
               console.log(
                 "Event has been emmited, winner has been picked!",
                 winnerAddress
               );
+
+              //get the timestamp variable
+              const newTimestamp = await raffleContract.getPreviousTimestamp();
+              console.log("newTimestamp:", newTimestamp);
+              const executionTime =
+                newTimestamp.toString() - lastTimestamp.toString();
+
+              console.log(newTimestamp.toString() - lastTimestamp.toString());
+              // get the winner address from contract
               const contractWinner = await raffleContract.getWinner();
+
               const winnerEndingBalance = await ethers.provider.getBalance(
                 winnerAddress
               );
               let winnerInitialBalance;
 
+              //get the initial winner balance before the prizepool is rewarded
               console.log("looking for winners initial balance");
               initialBalances.forEach((account) => {
                 if (account.hasOwnProperty(winnerAddress)) {
@@ -97,20 +105,11 @@ developmentChains.includes(network.name)
                   winnerInitialBalance = account[winnerAddress];
                   console.log(account);
                 } else {
-                  //   console.log(account);
                   console.log("not this one...");
                 }
               });
 
-              //   console.log(
-              //     "winner initial balance:",
-              //     winnerInitialBalance.toString()
-              //   );
-              //   console.log(
-              //     "winner ending balance:",
-              //     winnerEndingBalance.toString()
-              //   );
-
+              //calculate if the reward has been given with the right amount
               const winnerProfit =
                 winnerEndingBalance.toString() -
                 winnerInitialBalance.toString();
@@ -121,6 +120,9 @@ developmentChains.includes(network.name)
 
               //check if winner recieved the right amount
               assert.equal(winnerProfit, rafflePrizePool);
+
+              //check if execution time is after the interval
+              assert.ok(executionTime > interval);
 
               resolve();
             } catch (e) {
